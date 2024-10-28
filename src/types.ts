@@ -1,8 +1,5 @@
 export default interface IMessage {
-    type: "reg" | "update_winners",
-    data:
-        {
-        },
-    id: 0,
-  }
-  
+  type: 'reg' | 'update_winners';
+  data: "";
+  id: 0;
+}
