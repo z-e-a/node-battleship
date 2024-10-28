@@ -1,0 +1,13 @@
+{
+  "execMap": {
+    "ts": "ts-node"
+  },
+  "events": {
+    "restart": "clear"
+  },
+  "ext": "ts",
+  "watch": ["src"],
+  "ignore": ["__tests__/**/*","src/**/*.test.ts"],
+  "delay": 500,
+  "exec": "ts-node src/index.ts"
+}
