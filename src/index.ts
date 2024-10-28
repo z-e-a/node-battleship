@@ -9,20 +9,28 @@ const WS_PORT = 3000;
 
 const wss = new WebSocketServer({ port: WS_PORT });
 
-wss.on('connection', function connection(ws) {
-  console.log(`New client connected`);
+const connections = new Map<string, WebSocket>();
 
-  ws.on('error', console.error);
+wss.on('connection', function connection(ws: WebSocket) {
+  const connectionId = crypto.randomUUID();
+  connections.set(connectionId, ws);
+  console.log(`New client connected ${connectionId}`);
 
-  ws.on('message', function message(data: string) {
-    const parsedData = JSON.parse(String(data));
+  ws.onerror = (err: Error) => {
+    console.error(`connection id: ${connectionId}\n${err}`);
+  };
+
+  ws.onmessage = (ev: MessageEvent) => {
+    const parsedData = JSON.parse(ev.data);
     console.log(parsedData);
-    if (parsedData.type === 'reg') this.send(JSON.stringify(parsedData));
-  });
+    if (parsedData.type === 'reg') ws.send(JSON.stringify(parsedData));
+    return ev.data;
+  };
 
-  ws.on('close', () => {
-    console.log('Client disconnected');
-  });
+  ws.onclose = () => {
+    connections.delete(connectionId);
+    console.log(`Client with id:${connectionId} disconnected`);
+  };
 });
 
 wss.on('listening', () => {
@@ -34,23 +42,13 @@ wss.on('close', () => {
 });
 
 process.on('SIGINT', async function () {
-  if (wss.clients.size) {
-    let clientCounter = 1;
-    wss.clients.forEach(async (socket) => {
-      if (socket.readyState === socket.OPEN) {
-        console.log(`Send termination request to connected client #${clientCounter}`);
-        await socket.close();
-        process.nextTick(() => {
-          if (socket.readyState === socket.OPEN || socket.CLOSING) {
-            socket.terminate();
-          }
-        });
-        clientCounter++;
-      }
-    });
-  } else {
-    console.log('No connected clients...');
-  }
+  connections.forEach(async (conn, id) => {
+    if (conn.readyState === conn.OPEN) {
+      console.log(`Closing connection with id:${id}`);
+      await conn.close();
+    }
+  });
+
   await wss.close();
 
   setTimeout(() => {
