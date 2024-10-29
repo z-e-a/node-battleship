@@ -1,5 +1,6 @@
 import { WebSocketServer } from 'ws';
 import { httpServer } from './http_server';
+import { handleMessage } from './ws_server/utils';
 
 const HTTP_PORT = 8181;
 
@@ -21,9 +22,12 @@ wss.on('connection', function connection(ws: WebSocket) {
   };
 
   ws.onmessage = (ev: MessageEvent) => {
-    const parsedData = JSON.parse(ev.data);
-    console.log(parsedData);
-    if (parsedData.type === 'reg') ws.send(JSON.stringify(parsedData));
+    console.log(`Client ${connectionId} sent: %s`, ev.data);
+    try {
+      handleMessage(connections, connectionId, ev.data);
+    } catch (e) {
+      console.error(e);
+    }    
     return ev.data;
   };
 
