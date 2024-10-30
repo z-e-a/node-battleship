@@ -1,6 +1,7 @@
 import { WebSocketServer } from 'ws';
 import { httpServer } from './http_server';
 import { handleMessage } from './ws_server/utils';
+import { UserDb } from './store/userDb';
 
 const HTTP_PORT = 8181;
 
@@ -33,6 +34,7 @@ wss.on('connection', function connection(ws: WebSocket) {
 
   ws.onclose = () => {
     connections.delete(connectionId);
+    UserDb.getInstance().delConnectionId(connectionId);
     console.log(`Client with id:${connectionId} disconnected`);
   };
 });

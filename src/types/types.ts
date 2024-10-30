@@ -35,9 +35,15 @@ export interface IUser {
   name: string;
   password: string;
   wins: number;
+  connectionId?: string;
 }
 
 export interface IAddToRoomMessage extends IMessage {
   type: MsgType.ADD_TO_ROOM;
   data: { indexRoom: number | string };
+}
+
+export interface IRoom {
+  id: number;
+  usersId: string[];
 }
