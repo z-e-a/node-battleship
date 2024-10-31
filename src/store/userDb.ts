@@ -34,21 +34,17 @@ export class UserDb {
       isUniq = this.records.filter((rec) => rec.id === newUuid).length === 0;
     }
     const newUserRecord = { id: newUuid, ...newUser, wins: 0, connectionId };
-    // this.records = [...this.records, newUserRecord];
     this.records.push(newUserRecord);
     return newUserRecord;
   }
 
   setConnectionId(user:IUser, connectionId:string){
     this.records.filter((rec) => rec.name === user.name)[0].connectionId = connectionId;
-    // console.log(this.records.filter((rec) => rec.name === user.name)[0]);
     
   }
   delConnectionId(connectionId:string){
     this.records.filter((rec) => rec.connectionId === connectionId).forEach((rec: IUser)=>{
       rec.connectionId = '';
-      // console.log(this.records.filter((rec) => rec.name === user.name)[0]);
-      // console.log(`${rec.name} => ${rec.connectionId}`);
     })
   }
 }

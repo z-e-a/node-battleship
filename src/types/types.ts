@@ -40,7 +40,11 @@ export interface IUser {
 
 export interface IAddToRoomMessage extends IMessage {
   type: MsgType.ADD_TO_ROOM;
-  data: { indexRoom: number | string };
+  data: IAddRoomData;
+}
+
+export interface IAddRoomData {
+  indexRoom: number;
 }
 
 export interface IRoom {

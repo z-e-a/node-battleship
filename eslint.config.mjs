@@ -12,15 +12,21 @@ export default [
   },
   {
     rules: {
-      indent: ['warn', 2],
-      "no-console": "off",
+      indent: [
+        'warn',
+        2,
+        {
+          SwitchCase: 1,
+        },
+      ],
+      'no-console': 'off',
       'no-unused-vars': 'warn',
-      "no-debugger": "warn",
-      "@typescript-eslint/no-explicit-any": ["warn"],
-      "@typescript-eslint/interface-name-prefix": "off",
-      "@typescript-eslint/explicit-function-return-type": "off",
-      "@typescript-eslint/explicit-module-boundary-types": "off",
-      "max-len": ["warn", { code: 120 }],  
+      'no-debugger': 'warn',
+      '@typescript-eslint/no-explicit-any': ['warn'],
+      '@typescript-eslint/interface-name-prefix': 'off',
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/explicit-module-boundary-types': 'off',
+      'max-len': ['warn', { code: 120 }],
     },
   },
 ];

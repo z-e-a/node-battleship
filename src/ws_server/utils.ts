@@ -1,4 +1,4 @@
-import { IAddToRoomMessage, IMessage, IRegData, IRegMessage, MsgType } from 'src/types/types';
+import { IAddRoomData, IAddToRoomMessage, IMessage, IRegData, IRegMessage, MsgType } from 'src/types/types';
 import { UserDb } from '../store/userDb';
 import { RoomDb } from '../store/roomDb';
 
@@ -6,25 +6,45 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
   const parsedData: IMessage = parseMessage(message);
 
   switch (parsedData.type) {
-  case MsgType.REG: {
-    const authResponse = authenticate(parsedData.data as IRegData, connectionId);
-    connections.get(connectionId)?.send(JSON.stringify(authResponse));
-    if (!authResponse.error) {
-      sendRoomUpdate(connections);
+    case MsgType.REG: {
+      const authResponse = authenticate(parsedData.data as IRegData, connectionId);
+      connections.get(connectionId)?.send(JSON.stringify(authResponse));
+      if (!authResponse.error) {
+        sendRoomUpdate(connections);
+      }
+      break;
     }
-    break;
-  }
 
-  case MsgType.CREATE_ROOM: {
-    console.log('Creating the room...');
-    const userFromDb = UserDb.getInstance().getUserByConnectionId(connectionId);
-    RoomDb.getInstance().createRoom(userFromDb);
-    console.log(RoomDb.getInstance().getAllRooms());
-    sendRoomUpdate(connections);
-    break;
-  }
-  default:
-    break;
+    case MsgType.CREATE_ROOM: {
+      console.log('Creating the room...');
+      const userFromDb = UserDb.getInstance().getUserByConnectionId(connectionId);
+      const errorText = RoomDb.getInstance().createRoom(userFromDb);
+      if (!errorText) {
+        console.log(RoomDb.getInstance().getAllRooms());
+        sendRoomUpdate(connections);
+      } else {
+        const response = {
+          type: MsgType.CREATE_ROOM,
+          error: true,
+          errorText,
+          id: 0,
+        };
+        connections.get(connectionId)?.send(JSON.stringify(response));
+      }
+      break;
+    }
+
+    case MsgType.ADD_TO_ROOM: {
+      console.log('Adding user the room...');
+      const userFromDb = UserDb.getInstance().getUserByConnectionId(connectionId);
+      RoomDb.getInstance().addUser((parsedData.data as IAddRoomData).indexRoom, userFromDb);
+      console.log(RoomDb.getInstance().getAllRooms());
+      sendRoomUpdate(connections);
+      break;
+    }
+
+    default:
+      break;
   }
 }
 
@@ -49,19 +69,19 @@ function parseMessage(message: string) {
 function checkMessage(message: IMessage) {
   let result = true;
   switch (message.type) {
-  case MsgType.REG:
-    if (!(message as IRegMessage).data.name || !(message as IRegMessage).data.password) {
-      result = false;
-    }
-    break;
-  case MsgType.ADD_TO_ROOM:
-    if (!(message as IAddToRoomMessage).data.indexRoom) {
-      result = false;
-    }
-    break;
+    case MsgType.REG:
+      if (!(message as IRegMessage).data.name || !(message as IRegMessage).data.password) {
+        result = false;
+      }
+      break;
+    case MsgType.ADD_TO_ROOM:
+      if (!(message as IAddToRoomMessage).data.indexRoom) {
+        result = false;
+      }
+      break;
 
-  default:
-    break;
+    default:
+      break;
   }
   return result;
 }
@@ -102,7 +122,7 @@ function authenticate(user: IRegData, connectionId: string) {
 }
 
 export function sendRoomUpdate(connections: Map<string, WebSocket>) {
-  const rooms = RoomDb.getInstance().getAllRooms();
+  const rooms = RoomDb.getInstance().getFreeRooms();
   const data = JSON.stringify(
     rooms.map((room) => {
       const roomUsersData = room.usersId.map((userId) => {
