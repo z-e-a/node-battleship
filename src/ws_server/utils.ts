@@ -1,6 +1,15 @@
-import { IAddRoomData, IAddToRoomMessage, IMessage, IRegData, IRegMessage, MsgType } from 'src/types/types';
+import {
+  IAddRoomData,
+  IAddToRoomMessage,
+  IConnection,
+  IMessage,
+  IRegData,
+  IRegMessage,
+  MsgType,
+} from 'src/types/types';
 import { UserDb } from '../store/userDb';
 import { RoomDb } from '../store/roomDb';
+import { GameDb } from '../store/gameDb';
 
 export function handleMessage(connections: Map<string, WebSocket>, connectionId: string, message: string) {
   const parsedData: IMessage = parseMessage(message);
@@ -37,8 +46,13 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
     case MsgType.ADD_TO_ROOM: {
       console.log('Adding user the room...');
       const userFromDb = UserDb.getInstance().getUserByConnectionId(connectionId);
-      RoomDb.getInstance().addUser((parsedData.data as IAddRoomData).indexRoom, userFromDb);
-      console.log(RoomDb.getInstance().getAllRooms());
+      const roomId = (parsedData.data as IAddRoomData).indexRoom;
+      RoomDb.getInstance().addUser(roomId, userFromDb);
+
+      if (RoomDb.getInstance().getById(roomId).usersId.length >= 2) {
+        const newGameId = GameDb.getInstance().createGame(RoomDb.getInstance().getById(roomId));
+        sendGameCreated(connections, newGameId);
+      }
       sendRoomUpdate(connections);
       break;
     }
@@ -147,6 +161,28 @@ export function sendRoomUpdate(connections: Map<string, WebSocket>) {
   connections.forEach(async (conn) => {
     if (conn.readyState === conn.OPEN) {
       conn.send(JSON.stringify(response));
+    }
+  });
+}
+
+function sendGameCreated(connections: IConnection, newGameId: string) {
+  const newGame = GameDb.getInstance().getById(newGameId);
+  newGame.players.forEach((userId: string) => {
+    const userFromDb = UserDb.getInstance().getUserById(userId);
+    if (!userFromDb) {
+      throw new Error('User in room not found!');
+    } else {
+      const gameData = JSON.stringify({
+        idGame: newGame.idGame,
+        idPlayer: userFromDb.id,
+      });
+      const createGameResponse = {
+        type: MsgType.CREATE_GAME,
+        data: gameData,
+        id: 0,
+      };
+      const connection = connections.get(String(userFromDb.connectionId));
+      connection?.send(JSON.stringify(createGameResponse));
     }
   });
 }

@@ -1,3 +1,5 @@
+export type IConnection = 
+  Map<string, WebSocket>;
 export interface IMessage {
   type: MsgType;
   data: object;
@@ -50,4 +52,20 @@ export interface IAddRoomData {
 export interface IRoom {
   id: number;
   usersId: string[];
+}
+
+export interface IGame {
+  idGame: string; 
+  players: string[];
+  ships: IShip[];
+}
+
+export interface IShip{
+  position: {
+      x: number,
+      y: number,
+  },
+  direction: boolean,
+  length: number,
+  type: "small"|"medium"|"large"|"huge",
 }
