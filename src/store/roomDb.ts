@@ -34,6 +34,8 @@ export class RoomDb {
   }
 
   addUser(roomId: number, user: IUser) {
-    this.records.filter((rec) => rec.id === roomId)[0].usersId.push(user.id);
+    if(!this.records.filter((rec) => rec.id === roomId)[0].usersId.includes(user.id)) {
+      this.records.filter((rec) => rec.id === roomId)[0].usersId.push(user.id);
+    }
   }
 }

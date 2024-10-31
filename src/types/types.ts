@@ -1,5 +1,4 @@
-export type IConnection = 
-  Map<string, WebSocket>;
+export type IConnection = Map<string, WebSocket>;
 export interface IMessage {
   type: MsgType;
   data: object;
@@ -55,17 +54,24 @@ export interface IRoom {
 }
 
 export interface IGame {
-  idGame: string; 
+  idGame: string;
   players: string[];
-  ships: IShip[];
+  ships: Map<string, IShip[]>;
+  currentPlayerId: string;
 }
 
-export interface IShip{
+export interface IShip {
   position: {
-      x: number,
-      y: number,
-  },
-  direction: boolean,
-  length: number,
-  type: "small"|"medium"|"large"|"huge",
+    x: number;
+    y: number;
+  };
+  direction: boolean;
+  length: number;
+  type: 'small' | 'medium' | 'large' | 'huge';
+}
+
+export interface IAddShipsData {
+  gameId: string;
+  ships: IShip[];
+  indexPlayer: string;
 }

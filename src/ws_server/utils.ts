@@ -1,5 +1,6 @@
 import {
   IAddRoomData,
+  IAddShipsData,
   IAddToRoomMessage,
   IConnection,
   IMessage,
@@ -29,7 +30,6 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
       const userFromDb = UserDb.getInstance().getUserByConnectionId(connectionId);
       const errorText = RoomDb.getInstance().createRoom(userFromDb);
       if (!errorText) {
-        console.log(RoomDb.getInstance().getAllRooms());
         sendRoomUpdate(connections);
       } else {
         const response = {
@@ -50,10 +50,32 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
       RoomDb.getInstance().addUser(roomId, userFromDb);
 
       if (RoomDb.getInstance().getById(roomId).usersId.length >= 2) {
-        const newGameId = GameDb.getInstance().createGame(RoomDb.getInstance().getById(roomId));
+        const newGameId = GameDb.getInstance().createGame(RoomDb.getInstance().getById(roomId), userFromDb.id);
         sendGameCreated(connections, newGameId);
       }
       sendRoomUpdate(connections);
+      break;
+    }
+
+    case MsgType.ADD_SHIP: {
+      console.log('Adding ships to the game...');
+      const userFromDb = UserDb.getInstance().getUserByConnectionId(connectionId);
+      GameDb.getInstance().addShips(
+        (parsedData.data as IAddShipsData).gameId,
+        userFromDb.id,
+        (parsedData.data as IAddShipsData).ships,
+      );
+
+      const currentGame = GameDb.getInstance().getByPlayerId(userFromDb.id);
+      const shipsState: boolean[] = [];
+      currentGame.ships.forEach((playerShips) => {
+        shipsState.push(playerShips.length > 0);
+      });
+      const isShipsReady = shipsState.reduce((res, state)=> res && state, true);
+      if (currentGame.ships.size>1 && isShipsReady) {
+        sendStartGame(connections, currentGame.idGame);
+        sendTurn(connections, currentGame.idGame);
+      }
       break;
     }
 
@@ -184,5 +206,43 @@ function sendGameCreated(connections: IConnection, newGameId: string) {
       const connection = connections.get(String(userFromDb.connectionId));
       connection?.send(JSON.stringify(createGameResponse));
     }
+  });
+}
+
+function sendStartGame(connections: IConnection, gameId: string) {
+  const currentGame = GameDb.getInstance().getById(gameId);
+  currentGame.players.forEach((userId: string) => {
+    const userFromDb = UserDb.getInstance().getUserById(userId);
+    if (!userFromDb) {
+      throw new Error('User not found!');
+    } else {
+      const gameData = JSON.stringify({
+        currentPlayerIndex: userId,
+        ships: currentGame.ships.get(userId),
+      });
+      const createGameResponse = {
+        type: MsgType.START,
+        data: gameData,
+        id: 0,
+      };
+      const connection = connections.get(String(userFromDb.connectionId));
+      connection?.send(JSON.stringify(createGameResponse));
+    }
+  });
+}
+
+function sendTurn(connections: IConnection, gameId: string) {
+  const currentGame = GameDb.getInstance().getById(gameId);
+  currentGame.players.forEach((userId) => {
+    const userFromDb = UserDb.getInstance().getUserById(userId);
+    const turnResponse = {
+      type: MsgType.TURN,
+      data: {
+        currentPlayer: currentGame.currentPlayerId,
+      },
+      id: 0,
+    };
+    const connection = connections.get(String(userFromDb.connectionId));
+    connection?.send(JSON.stringify(turnResponse));
   });
 }

@@ -1,4 +1,4 @@
-import { IGame, IRoom} from '../types/types';
+import { IGame, IRoom, IShip } from '../types/types';
 
 export class GameDb {
   private static readonly gameDb: GameDb = new GameDb();
@@ -16,7 +16,11 @@ export class GameDb {
     return this.records.filter((rec) => rec.idGame === id)[0];
   }
 
-  createGame(room: IRoom) {
+  getByPlayerId(playerId: string) {
+    return this.records.filter((rec) => rec.players.includes(playerId))[0];
+  }
+
+  createGame(room: IRoom, userId: string) {
     let isUniq = false;
     let newUuid = '';
     while (!isUniq) {
@@ -26,9 +30,15 @@ export class GameDb {
     const newGame: IGame = {
       idGame: newUuid,
       players: room.usersId.slice(),
-      ships:[]
+      ships:  new Map<string, IShip[]>(),
+      currentPlayerId: userId,
     };
     this.records.push(newGame);
     return newGame.idGame;
+  }
+
+  addShips(gameId: string, playerId: string, ships: IShip[]) {
+    const game = this.records.filter((rec) => rec.idGame === gameId)[0];
+    game.ships.set(playerId, ships);
   }
 }
