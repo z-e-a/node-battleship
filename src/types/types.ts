@@ -58,6 +58,9 @@ export interface IGame {
   players: string[];
   ships: Map<string, IShip[]>;
   currentPlayerId: string;
+  fields: Map<string, Field>;
+  availableCells: Map<string, Set<Position>>;
+  enemies: Map<string, string>;
 }
 
 export interface IShip {
@@ -68,10 +71,34 @@ export interface IShip {
   direction: boolean;
   length: number;
   type: 'small' | 'medium' | 'large' | 'huge';
+  health?: number;
+}
+
+export type Position = {
+  x: number,
+  y: number,
+};
+
+export type Field = ICell[][];
+
+export interface ICell {
+  ship: IShip | null;
+  isFired: boolean;
 }
 
 export interface IAddShipsData {
   gameId: string;
   ships: IShip[];
   indexPlayer: string;
+}
+
+export interface IAttackReqData {
+  gameId: string;
+  x: number;
+  y: number;
+  indexPlayer: string;
+}
+
+export interface IAttackRespData extends IAttackReqData {
+  status: 'miss' | 'killed' | 'shot';
 }

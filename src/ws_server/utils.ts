@@ -71,11 +71,20 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
       currentGame.ships.forEach((playerShips) => {
         shipsState.push(playerShips.length > 0);
       });
-      const isShipsReady = shipsState.reduce((res, state)=> res && state, true);
-      if (currentGame.ships.size>1 && isShipsReady) {
+      const isShipsReady = shipsState.reduce((res, state) => res && state, true);
+      if (currentGame.ships.size > 1 && isShipsReady) {
+        GameDb.getInstance().start(currentGame);
         sendStartGame(connections, currentGame.idGame);
         sendTurn(connections, currentGame.idGame);
       }
+      break;
+    }
+
+    case MsgType.ATTACK: {
+      console.log('Attack...');
+      // const userFromDb = UserDb.getInstance().getUserByConnectionId(connectionId);
+      // const currentGame = GameDb.getInstance().getByPlayerId(userFromDb.id);
+
       break;
     }
 
@@ -165,7 +174,7 @@ export function sendRoomUpdate(connections: Map<string, WebSocket>) {
         const userFromDb = UserDb.getInstance().getUserById(userId);
         return {
           name: userFromDb.name,
-          index: userFromDb.id,
+          index: 1,
         };
       });
       return {
@@ -196,7 +205,7 @@ function sendGameCreated(connections: IConnection, newGameId: string) {
     } else {
       const gameData = JSON.stringify({
         idGame: newGame.idGame,
-        idPlayer: userFromDb.id,
+        idPlayer: newGame.players.indexOf(userFromDb.id) + 1,
       });
       const createGameResponse = {
         type: MsgType.CREATE_GAME,
@@ -217,7 +226,7 @@ function sendStartGame(connections: IConnection, gameId: string) {
       throw new Error('User not found!');
     } else {
       const gameData = JSON.stringify({
-        currentPlayerIndex: userId,
+        currentPlayerIndex: currentGame.players.indexOf(currentGame.currentPlayerId) + 1,
         ships: currentGame.ships.get(userId),
       });
       const createGameResponse = {
@@ -238,7 +247,7 @@ function sendTurn(connections: IConnection, gameId: string) {
     const turnResponse = {
       type: MsgType.TURN,
       data: {
-        currentPlayer: currentGame.currentPlayerId,
+        currentPlayer: currentGame.players.indexOf(currentGame.currentPlayerId) + 1,
       },
       id: 0,
     };
