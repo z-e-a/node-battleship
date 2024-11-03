@@ -82,23 +82,39 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
       break;
     }
 
+    case MsgType.RND_ATTACK:
     case MsgType.ATTACK: {
-      console.log('Attack...');
       const currentGame = GameDb.getInstance().getById((parsedData.data as IAttackData).gameId);
       const userFromDb = UserDb.getInstance().getUserById(
         currentGame.players[(parsedData.data as IAttackData).indexPlayer - 1],
       );
 
       const enemy = UserDb.getInstance().getUserById(String(currentGame.enemies.get(userFromDb.id)));
-      const attackedPosition = {
-        x: (parsedData.data as IAttackData).x,
-        y: (parsedData.data as IAttackData).y,
-      };
       const enemyField = currentGame.fields?.get(enemy.id);
       const enemyAvailableCells = currentGame.availableCells?.get(enemy.id);
-      if (!enemyField || !enemyAvailableCells || !enemyAvailableCells.has(JSON.stringify(attackedPosition))) {
+      if (!enemyField || !enemyAvailableCells || currentGame.currentPlayerId != userFromDb.id) {
         break;
       }
+
+      let attackedPosition;
+
+      if (parsedData.type == MsgType.ATTACK) {
+        console.log('Attack...');
+        attackedPosition = {
+          x: (parsedData.data as IAttackData).x,
+          y: (parsedData.data as IAttackData).y,
+        };
+        if (!enemyAvailableCells.has(JSON.stringify(attackedPosition))) {
+          console.log(`Position ${JSON.stringify(attackedPosition)} not allowed`);
+          break;
+        }
+      } else {
+        console.log('Random attack...');
+        const rndIdx = Math.floor(Math.random()) * enemyAvailableCells.size;
+        const rndPosition = Array.from(enemyAvailableCells)[rndIdx];
+        attackedPosition = JSON.parse(rndPosition);
+      }
+
       enemyField[attackedPosition.x][attackedPosition.y].isFired = true;
       const enemyShip = enemyField[attackedPosition.x][attackedPosition.y].ship;
       let attackResult = 'miss';
@@ -108,11 +124,11 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
           attackResult = enemyShip.health == 0 ? 'killed' : 'shot';
         }
       }
-      
+
       sendAttackResponse(connections, currentGame.idGame, attackedPosition, attackResult);
-      GameDb.getInstance().makeTurn(currentGame.idGame);
+      if (attackResult == 'miss') GameDb.getInstance().makeTurn(currentGame.idGame);
       sendTurn(connections, currentGame.idGame);
-      
+
       enemyAvailableCells.delete(JSON.stringify(attackedPosition));
       break;
     }
@@ -275,9 +291,9 @@ function sendTurn(connections: IConnection, gameId: string) {
     const userFromDb = UserDb.getInstance().getUserById(userId);
     const turnResponse = {
       type: MsgType.TURN,
-      data: {
+      data: JSON.stringify({
         currentPlayer: currentGame.players.indexOf(currentGame.currentPlayerId) + 1,
-      },
+      }),
       id: 0,
     };
     const connection = connections.get(String(userFromDb.connectionId));
@@ -291,11 +307,11 @@ function sendAttackResponse(connections: IConnection, gameId: string, position: 
     const userFromDb = UserDb.getInstance().getUserById(userId);
     const attackResponse = {
       type: MsgType.ATTACK,
-      data: {
+      data: JSON.stringify({
         currentPlayer: currentGame.players.indexOf(currentGame.currentPlayerId) + 1,
         position,
         status,
-      },
+      }),
       id: 0,
     };
     const connection = connections.get(String(userFromDb.connectionId));
