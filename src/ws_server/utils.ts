@@ -7,6 +7,7 @@ import {
   IMessage,
   IRegData,
   IRegMessage,
+  IShip,
   MsgType,
   Position,
 } from 'src/types/types';
@@ -54,6 +55,7 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
       if (RoomDb.getInstance().getById(roomId).usersId.length >= 2) {
         const newGameId = GameDb.getInstance().createGame(RoomDb.getInstance().getById(roomId), userFromDb.id);
         sendGameCreated(connections, newGameId);
+        RoomDb.getInstance().deleteById(roomId);
       }
       sendRoomUpdate(connections);
       break;
@@ -141,6 +143,7 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
             };
             if (isPositionValid(shiftedPos)) {
               sendAttackResponse(connections, currentGame.idGame, shiftedPos, 'miss');
+              enemyAvailableCells.delete(JSON.stringify(shiftedPos));
             }
           }
         }
@@ -151,14 +154,23 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
         };
         if (isPositionValid(shiftedPosBefore)) {
           sendAttackResponse(connections, currentGame.idGame, shiftedPosBefore, 'miss');
+          enemyAvailableCells.delete(JSON.stringify(shiftedPosBefore));
         }
-        
+
         const shiftedPosAfter = {
           x: enemyShipX! + (enemyShipDirection ? 0 : enemyShipLength),
           y: enemyShipY! + (enemyShipDirection ? enemyShipLength : 0),
         };
         if (isPositionValid(shiftedPosAfter)) {
           sendAttackResponse(connections, currentGame.idGame, shiftedPosAfter, 'miss');
+          enemyAvailableCells.delete(JSON.stringify(shiftedPosAfter));
+        }
+
+        if (isWinner(currentGame.idGame)) {
+          userFromDb.wins++;
+          sendFinishGame(connections, currentGame.idGame);
+          GameDb.getInstance().deleteById(currentGame.idGame);
+          break;
         }
       }
 
@@ -357,4 +369,30 @@ function sendAttackResponse(connections: IConnection, gameId: string, position: 
 
 function isPositionValid(position: Position) {
   return position.x >= 0 && position.x < 10 && position.y >= 0 && position.y < 10;
+}
+
+function isWinner(gameId: string) {
+  const currentGame = GameDb.getInstance().getById(gameId);
+  let isWinner = true;
+  currentGame.ships.get(currentGame.enemies.get(currentGame.currentPlayerId)!)?.forEach((ship: IShip)=>{
+    console.log(ship);
+    isWinner &&= ship.health == 0;
+  });
+  return isWinner;
+}
+
+function sendFinishGame(connections: IConnection, gameId: string) {
+  const currentGame = GameDb.getInstance().getById(gameId);
+  currentGame.players.forEach((userId) => {
+    const userFromDb = UserDb.getInstance().getUserById(userId);
+    const attackResponse = {
+      type: MsgType.FINISH,
+      data: JSON.stringify({
+        winPlayer: currentGame.players.indexOf(currentGame.currentPlayerId) + 1,
+      }),
+      id: 0,
+    };
+    const connection = connections.get(String(userFromDb.connectionId));
+    connection?.send(JSON.stringify(attackResponse));
+  });  
 }

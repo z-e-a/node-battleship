@@ -33,6 +33,10 @@ export class RoomDb {
     }
   }
 
+  deleteById(id: number) {
+    this.records.splice(this.records.findIndex(room => room.id == id), 1);
+  }
+
   addUser(roomId: number, user: IUser) {
     if(!this.records.filter((rec) => rec.id === roomId)[0].usersId.includes(user.id)) {
       this.records.filter((rec) => rec.id === roomId)[0].usersId.push(user.id);

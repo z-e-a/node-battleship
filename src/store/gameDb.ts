@@ -40,6 +40,10 @@ export class GameDb {
     return newGame.idGame;
   }
 
+  deleteById(gameId: string) {
+    this.records.splice(this.records.findIndex(game => game.idGame == gameId), 1);
+  }
+
   addShips(gameId: string, playerId: string, ships: IShip[]) {
     const game = this.records.filter((rec) => rec.idGame === gameId)[0];
     game.ships.set(playerId, ships);
