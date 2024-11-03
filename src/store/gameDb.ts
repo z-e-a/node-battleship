@@ -1,4 +1,4 @@
-import { Field, ICell, IGame, IRoom, IShip, Position } from '../types/types';
+import { Field, ICell, IGame, IRoom, IShip } from '../types/types';
 
 export class GameDb {
   private static readonly gameDb: GameDb = new GameDb();

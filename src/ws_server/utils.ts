@@ -8,6 +8,7 @@ import {
   IRegData,
   IRegMessage,
   IShip,
+  IUser,
   MsgType,
   Position,
 } from 'src/types/types';
@@ -24,6 +25,7 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
       connections.get(connectionId)?.send(JSON.stringify(authResponse));
       if (!authResponse.error) {
         sendRoomUpdate(connections);
+        sendWinnersUpdate(connections);
       }
       break;
     }
@@ -112,7 +114,7 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
         }
       } else {
         console.log('Random attack...');
-        const rndIdx = Math.floor(Math.random()) * enemyAvailableCells.size;
+        const rndIdx = Math.floor(Math.random() * enemyAvailableCells.size);
         const rndPosition = Array.from(enemyAvailableCells)[rndIdx];
         attackedPosition = JSON.parse(rndPosition);
       }
@@ -169,6 +171,7 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
         if (isWinner(currentGame.idGame)) {
           userFromDb.wins++;
           sendFinishGame(connections, currentGame.idGame);
+          sendWinnersUpdate(connections);
           GameDb.getInstance().deleteById(currentGame.idGame);
           break;
         }
@@ -234,7 +237,7 @@ function authenticate(user: IRegData, connectionId: string) {
       UserDb.getInstance().setConnectionId(userFromDb, connectionId);
       return {
         type: MsgType.REG,
-        data: JSON.stringify(user),
+        data: JSON.stringify({ name: userFromDb.name, index: userFromDb.id }),
         id: 0,
       };
     } else {
@@ -250,10 +253,10 @@ function authenticate(user: IRegData, connectionId: string) {
     }
   } else {
     console.log(`User ${user.name} not found in DB...`);
-    UserDb.getInstance().createUser(user, connectionId);
+    const newUser = UserDb.getInstance().createUser(user, connectionId);
     return {
       type: MsgType.REG,
-      data: JSON.stringify(user),
+      data: JSON.stringify({name: newUser.name, index: newUser.id}),
       id: 0,
     };
   }
@@ -374,8 +377,7 @@ function isPositionValid(position: Position) {
 function isWinner(gameId: string) {
   const currentGame = GameDb.getInstance().getById(gameId);
   let isWinner = true;
-  currentGame.ships.get(currentGame.enemies.get(currentGame.currentPlayerId)!)?.forEach((ship: IShip)=>{
-    console.log(ship);
+  currentGame.ships.get(currentGame.enemies.get(currentGame.currentPlayerId)!)?.forEach((ship: IShip) => {
     isWinner &&= ship.health == 0;
   });
   return isWinner;
@@ -394,5 +396,29 @@ function sendFinishGame(connections: IConnection, gameId: string) {
     };
     const connection = connections.get(String(userFromDb.connectionId));
     connection?.send(JSON.stringify(attackResponse));
-  });  
+  });
+}
+
+function sendWinnersUpdate(connections: IConnection) {
+  const users = UserDb.getInstance().getAllUsers();
+  const data = JSON.stringify(
+    users.map((user: IUser) => {
+      return {
+        name: user.name,
+        wins: user.wins,
+      };
+    }),
+  );
+
+  const response = {
+    type: MsgType.UPD_WIN,
+    data,
+    id: 0,
+  };
+
+  connections.forEach(async (conn) => {
+    if (conn.readyState === conn.OPEN) {
+      conn.send(JSON.stringify(response));
+    }
+  });
 }
