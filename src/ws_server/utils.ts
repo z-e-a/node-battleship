@@ -2,11 +2,13 @@ import {
   IAddRoomData,
   IAddShipsData,
   IAddToRoomMessage,
+  IAttackData,
   IConnection,
   IMessage,
   IRegData,
   IRegMessage,
   MsgType,
+  Position,
 } from 'src/types/types';
 import { UserDb } from '../store/userDb';
 import { RoomDb } from '../store/roomDb';
@@ -82,9 +84,36 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
 
     case MsgType.ATTACK: {
       console.log('Attack...');
-      // const userFromDb = UserDb.getInstance().getUserByConnectionId(connectionId);
-      // const currentGame = GameDb.getInstance().getByPlayerId(userFromDb.id);
+      const currentGame = GameDb.getInstance().getById((parsedData.data as IAttackData).gameId);
+      const userFromDb = UserDb.getInstance().getUserById(
+        currentGame.players[(parsedData.data as IAttackData).indexPlayer - 1],
+      );
 
+      const enemy = UserDb.getInstance().getUserById(String(currentGame.enemies.get(userFromDb.id)));
+      const attackedPosition = {
+        x: (parsedData.data as IAttackData).x,
+        y: (parsedData.data as IAttackData).y,
+      };
+      const enemyField = currentGame.fields?.get(enemy.id);
+      const enemyAvailableCells = currentGame.availableCells?.get(enemy.id);
+      if (!enemyField || !enemyAvailableCells || !enemyAvailableCells.has(JSON.stringify(attackedPosition))) {
+        break;
+      }
+      enemyField[attackedPosition.x][attackedPosition.y].isFired = true;
+      const enemyShip = enemyField[attackedPosition.x][attackedPosition.y].ship;
+      let attackResult = 'miss';
+      if (enemyShip) {
+        if (enemyShip.health && enemyShip.health > 0) {
+          enemyShip.health--;
+          attackResult = enemyShip.health == 0 ? 'killed' : 'shot';
+        }
+      }
+      
+      sendAttackResponse(connections, currentGame.idGame, attackedPosition, attackResult);
+      GameDb.getInstance().makeTurn(currentGame.idGame);
+      sendTurn(connections, currentGame.idGame);
+      
+      enemyAvailableCells.delete(JSON.stringify(attackedPosition));
       break;
     }
 
@@ -253,5 +282,23 @@ function sendTurn(connections: IConnection, gameId: string) {
     };
     const connection = connections.get(String(userFromDb.connectionId));
     connection?.send(JSON.stringify(turnResponse));
+  });
+}
+
+function sendAttackResponse(connections: IConnection, gameId: string, position: Position, status: string) {
+  const currentGame = GameDb.getInstance().getById(gameId);
+  currentGame.players.forEach((userId) => {
+    const userFromDb = UserDb.getInstance().getUserById(userId);
+    const attackResponse = {
+      type: MsgType.ATTACK,
+      data: {
+        currentPlayer: currentGame.players.indexOf(currentGame.currentPlayerId) + 1,
+        position,
+        status,
+      },
+      id: 0,
+    };
+    const connection = connections.get(String(userFromDb.connectionId));
+    connection?.send(JSON.stringify(attackResponse));
   });
 }

@@ -59,7 +59,7 @@ export interface IGame {
   ships: Map<string, IShip[]>;
   currentPlayerId: string;
   fields: Map<string, Field>;
-  availableCells: Map<string, Set<Position>>;
+  availableCells: Map<string, Set<string>>;
   enemies: Map<string, string>;
 }
 
@@ -101,4 +101,12 @@ export interface IAttackReqData {
 
 export interface IAttackRespData extends IAttackReqData {
   status: 'miss' | 'killed' | 'shot';
+}
+
+
+export interface IAttackData {
+  gameId: string;
+  x: number;
+  y: number;
+  indexPlayer: number;
 }

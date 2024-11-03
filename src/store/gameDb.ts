@@ -33,8 +33,8 @@ export class GameDb {
       ships: new Map<string, IShip[]>(),
       currentPlayerId: userId,
       fields: new Map<string, Field>(),
-      availableCells: new Map<string, Set<Position>>,
-      enemies: new Map<string, string>,
+      availableCells: new Map<string, Set<string>>(),
+      enemies: new Map<string, string>(),
     };
     this.records.push(newGame);
     return newGame.idGame;
@@ -46,22 +46,22 @@ export class GameDb {
   }
 
   start(game: IGame) {
-    console.log("Starting the game...");
-    
+    console.log('Starting the game...');
+
     game.ships.forEach((playerShips, playerId) => {
       const playerField: ICell[][] = [];
-      const playerCells: Set<Position> = new Set();
+      const playerCells: Set<string> = new Set();
       for (let y = 0; y < 10; y++) {
         playerField[y] = [];
         for (let x = 0; x < 10; x++) {
           playerField[y][x] = {
             ship: null,
             isFired: false,
-          }
-          playerCells.add({ x, y });
+          };
+          playerCells.add(JSON.stringify({ x, y }));
         }
       }
-      
+
       playerShips.forEach((ship) => {
         ship.health = ship.length;
         for (let i = 0; i < ship.length; i++) {
@@ -69,11 +69,18 @@ export class GameDb {
             ship;
         }
       });
-      
-      game.fields.set(playerId, playerField)
-      game.availableCells.set(playerId, playerCells)
-      const enemy = game.players.filter((p)=> p != playerId)[0];
+
+      game.fields.set(playerId, playerField);
+      game.availableCells.set(playerId, playerCells);
+      const enemy = game.players.filter((p) => p != playerId)[0];
       game.enemies.set(playerId, enemy);
     });
+  }
+
+  makeTurn(gameId: string) {
+    console.log('Making turn...');
+    const game = this.records.filter((rec) => rec.idGame === gameId)[0];
+    const nextPlayerID = game.enemies.get(game.currentPlayerId);
+    game.currentPlayerId = String(nextPlayerID);
   }
 }
