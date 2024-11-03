@@ -126,6 +126,42 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
       }
 
       sendAttackResponse(connections, currentGame.idGame, attackedPosition, attackResult);
+
+      if (attackResult == 'killed') {
+        const enemyShipX = enemyField[attackedPosition.x][attackedPosition.y].ship?.position.x;
+        const enemyShipY = enemyField[attackedPosition.x][attackedPosition.y].ship?.position.y;
+        const enemyShipLength = enemyField[attackedPosition.x][attackedPosition.y].ship?.length ?? 0;
+        const enemyShipDirection = enemyField[attackedPosition.x][attackedPosition.y].ship?.direction;
+
+        for (let i = -1; i <= enemyShipLength; i++) {
+          for (let shift = -1; shift <= 1; shift += 2) {
+            const shiftedPos = {
+              x: enemyShipX! + (enemyShipDirection ? shift : i),
+              y: enemyShipY! + (enemyShipDirection ? i : shift),
+            };
+            if (isPositionValid(shiftedPos)) {
+              sendAttackResponse(connections, currentGame.idGame, shiftedPos, 'miss');
+            }
+          }
+        }
+
+        const shiftedPosBefore = {
+          x: enemyShipX! + (enemyShipDirection ? 0 : -1),
+          y: enemyShipY! + (enemyShipDirection ? -1 : 0),
+        };
+        if (isPositionValid(shiftedPosBefore)) {
+          sendAttackResponse(connections, currentGame.idGame, shiftedPosBefore, 'miss');
+        }
+        
+        const shiftedPosAfter = {
+          x: enemyShipX! + (enemyShipDirection ? 0 : enemyShipLength),
+          y: enemyShipY! + (enemyShipDirection ? enemyShipLength : 0),
+        };
+        if (isPositionValid(shiftedPosAfter)) {
+          sendAttackResponse(connections, currentGame.idGame, shiftedPosAfter, 'miss');
+        }
+      }
+
       if (attackResult == 'miss') GameDb.getInstance().makeTurn(currentGame.idGame);
       sendTurn(connections, currentGame.idGame);
 
@@ -317,4 +353,8 @@ function sendAttackResponse(connections: IConnection, gameId: string, position: 
     const connection = connections.get(String(userFromDb.connectionId));
     connection?.send(JSON.stringify(attackResponse));
   });
+}
+
+function isPositionValid(position: Position) {
+  return position.x >= 0 && position.x < 10 && position.y >= 0 && position.y < 10;
 }
