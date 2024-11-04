@@ -1,0 +1,55 @@
+import { IRoom, IUser } from '../types/types';
+
+export class RoomDb {
+  private static readonly roomDb: RoomDb = new RoomDb();
+  private readonly records: IRoom[] = [];
+  private idx: number = 1;
+
+  static getInstance() {
+    return this.roomDb;
+  }
+
+  public getAllRooms(): IRoom[] {
+    return this.records;
+  }
+
+  public getFreeRooms(): IRoom[] {
+    return this.records.filter((rec) => rec.usersId.length <= 1);
+  }
+
+  getById(id: number) {
+    return this.records.filter((rec) => rec.id === id)[0];
+  }
+
+  createRoom(user: IUser) {
+    const userRooms = this.records.filter((rec) => rec.usersId.includes(user.id));
+    if (userRooms.length > 0) {
+      return 'User already in room!';
+    } else {
+      this.records.push({ id: this.idx, usersId: [user.id] });
+      console.log(`${user.name} created new room #${this.idx}`);
+      this.idx += 1;
+      return '';
+    }
+  }
+
+  deleteById(id: number) {
+    this.records.splice(this.records.findIndex(room => room.id == id), 1);
+  }
+
+  addUser(roomId: number, user: IUser) {
+    if(!this.records.filter((rec) => rec.id === roomId)[0].usersId.includes(user.id)) {
+      this.records.filter((rec) => rec.id === roomId)[0].usersId.push(user.id);
+    }
+  }
+
+  delUser(roomId: number, userId: string) {
+    const currentRoom = this.records.filter((rec) => rec.id === roomId)[0];
+    if(currentRoom.usersId.includes(userId)) {
+      currentRoom.usersId.splice(currentRoom.usersId.indexOf(userId),1);
+    }
+    if(currentRoom.usersId.length == 0) {
+      this.deleteById(roomId);
+    }
+  }
+}
