@@ -264,6 +264,16 @@ function authenticate(user: IRegData, connectionId: string) {
   if (userFromDb) {
     console.log(`User ${user.name} found in DB`);
     if (user.password == userFromDb.password) {
+      if (userFromDb.connectionId) {
+        return {
+          type: MsgType.REG,
+          index: userFromDb.id,
+          error: true,
+          errorText: `error: "User ${user.name} already logged in!"`,
+          id: 0,
+        };
+      }
+
       UserDb.getInstance().setConnectionId(userFromDb, connectionId);
       return {
         type: MsgType.REG,

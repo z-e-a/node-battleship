@@ -1,7 +1,8 @@
 import { WebSocketServer } from 'ws';
 import { httpServer } from './http_server';
-import { handleMessage } from './ws_server/utils';
+import { handleMessage, sendRoomUpdate } from './ws_server/utils';
 import { UserDb } from './store/userDb';
+import { RoomDb } from './store/roomDb';
 
 const HTTP_PORT = 8181;
 
@@ -33,8 +34,14 @@ wss.on('connection', function connection(ws: WebSocket) {
   };
 
   ws.onclose = () => {
+    const userFromDb = UserDb.getInstance().getUserByConnectionId(connectionId);
+    RoomDb.getInstance().getAllRooms().forEach((room) => {
+      RoomDb.getInstance().delUser(room.id, userFromDb.id);
+      sendRoomUpdate(connections);
+    });
     connections.delete(connectionId);
     UserDb.getInstance().delConnectionId(connectionId);
+    
     console.log(`Client with id:${connectionId} disconnected`);
   };
 });

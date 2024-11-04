@@ -42,4 +42,14 @@ export class RoomDb {
       this.records.filter((rec) => rec.id === roomId)[0].usersId.push(user.id);
     }
   }
+
+  delUser(roomId: number, userId: string) {
+    const currentRoom = this.records.filter((rec) => rec.id === roomId)[0];
+    if(currentRoom.usersId.includes(userId)) {
+      currentRoom.usersId.splice(currentRoom.usersId.indexOf(userId),1);
+    }
+    if(currentRoom.usersId.length == 0) {
+      this.deleteById(roomId);
+    }
+  }
 }
