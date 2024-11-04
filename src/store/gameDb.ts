@@ -1,4 +1,6 @@
 import { Field, ICell, IGame, IRoom, IShip } from '../types/types';
+import { getRandomShips } from './randomShips';
+import { UserDb } from './userDb';
 
 export class GameDb {
   private static readonly gameDb: GameDb = new GameDb();
@@ -40,8 +42,38 @@ export class GameDb {
     return newGame.idGame;
   }
 
+  createSingleGame(userId: string) {
+    let isUniq = false;
+    let newUuid = '';
+    while (!isUniq) {
+      newUuid = crypto.randomUUID();
+      isUniq = this.records.filter((rec) => rec.idGame === newUuid).length === 0;
+    }
+
+    let bot = UserDb.getInstance().getUserByName('bot');
+    if (!bot) {
+      bot = UserDb.getInstance().createUser({ name: 'bot', password: '' }, 'bot-connection');
+    }
+    const botShips = getRandomShips();
+    const newGame: IGame = {
+      idGame: newUuid,
+      players: [userId, bot.id],
+      ships: new Map<string, IShip[]>(),
+      currentPlayerId: userId,
+      fields: new Map<string, Field>(),
+      availableCells: new Map<string, Set<string>>(),
+      enemies: new Map<string, string>(),
+    };
+    newGame.ships.set(bot.id, botShips as IShip[]);
+    this.records.push(newGame);
+    return newGame.idGame;
+  }
+
   deleteById(gameId: string) {
-    this.records.splice(this.records.findIndex(game => game.idGame == gameId), 1);
+    this.records.splice(
+      this.records.findIndex((game) => game.idGame == gameId),
+      1,
+    );
   }
 
   addShips(gameId: string, playerId: string, ships: IShip[]) {

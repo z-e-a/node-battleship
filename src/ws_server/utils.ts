@@ -177,10 +177,30 @@ export function handleMessage(connections: Map<string, WebSocket>, connectionId:
         }
       }
 
+      enemyAvailableCells.delete(JSON.stringify(attackedPosition));
       if (attackResult == 'miss') GameDb.getInstance().makeTurn(currentGame.idGame);
       sendTurn(connections, currentGame.idGame);
 
-      enemyAvailableCells.delete(JSON.stringify(attackedPosition));
+      if (UserDb.getInstance().getUserById(currentGame.currentPlayerId).name == 'bot') {
+        console.log("Bot's turn");
+        const randomAttackMessage = {
+          type: MsgType.RND_ATTACK,
+          data: JSON.stringify({
+            gameId: currentGame.idGame,
+            indexPlayer: 2,
+          }),
+          id: 0,
+        };
+        setTimeout(() => handleMessage(connections, 'bot-connection', JSON.stringify(randomAttackMessage)), 1000);
+      }
+
+      break;
+    }
+
+    case MsgType.SINGLE: {
+      const userFromDb = UserDb.getInstance().getUserByConnectionId(connectionId);
+      const newGameId = GameDb.getInstance().createSingleGame(userFromDb.id);
+      sendGameCreated(connections, newGameId);
       break;
     }
 
@@ -231,6 +251,16 @@ function authenticate(user: IRegData, connectionId: string) {
   const userFromDb = UserDb.getInstance().getUserByName(user.name);
   console.log('authenticate user:\n', user);
 
+  if (user.name == 'bot') {
+    return {
+      type: MsgType.REG,
+      index: userFromDb.id,
+      error: true,
+      errorText: 'error: "Name \'bot\' is reserved!"',
+      id: 0,
+    };
+  }
+
   if (userFromDb) {
     console.log(`User ${user.name} found in DB`);
     if (user.password == userFromDb.password) {
@@ -256,7 +286,7 @@ function authenticate(user: IRegData, connectionId: string) {
     const newUser = UserDb.getInstance().createUser(user, connectionId);
     return {
       type: MsgType.REG,
-      data: JSON.stringify({name: newUser.name, index: newUser.id}),
+      data: JSON.stringify({ name: newUser.name, index: newUser.id }),
       id: 0,
     };
   }
